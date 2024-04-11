@@ -31,5 +31,4 @@ pub type Statement {
   Return(keyword: Token, value: Option(Expression))
   Var(name: Token, initializer: Option(Expression))
   While(condition: Expression, body: Statement)
-  
 }
