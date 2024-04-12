@@ -1,9 +1,12 @@
 import argv
+import gleeok/ast/expr
 import gleeok/lexer
+import gleeok/parser
 import gleeok/token
 import gleam/erlang
 import gleam/io
 import gleam/list
+import nibble
 import simplifile
 
 pub fn main() {
@@ -32,8 +35,16 @@ fn run_prompt() {
 fn run(source: String) {
   let lexer = lexer.new()
   let assert Ok(tokens) = lexer.run(lexer, source)
-  use token <- list.each(tokens)
-  token.value
-  |> token.to_string
-  |> io.println
+  let parser = parser.new()
+  let result = nibble.run(tokens, parser)
+  case result {
+    Ok(e) ->
+      expr.to_string(e)
+      |> io.println
+    Error(e) -> {
+      io.debug(e)
+      Nil
+    }
+  }
+  Nil
 }

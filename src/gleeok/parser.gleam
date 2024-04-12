@@ -1,50 +1,72 @@
-import gleeok/ast.{type Expression}
+import gleeok/ast.{type Expr}
+import gleeok/ast/expr
 import gleeok/literal
-import gleeok/token.{type Token, type TokenType}
+import gleeok/token.{type TokenType}
+import gleam/list
 import gleam/option.{None, Some}
-import nibble.{do, one_of, return}
-import nibble/lexer.{Token}
-import nibble/pratt
+import nibble.{do, many, one_of, return}
+import nibble/lexer.{type Span}
 
 pub type Parser(a) =
-  nibble.Parser(a, Token, Nil)
+  nibble.Parser(a, TokenType, Nil)
 
-pub fn new() -> Parser(Expression) {
+pub fn new() -> Parser(Expr) {
+  parse_primary()
+}
+
+fn parse_expression() -> Parser(Expr) {
+  parse_primary()
+}
+
+fn parse_equality() -> Parser(Expr) {
+  use expr <- do(parse_comparison())
+  use rights <- do(many(parse_equality_helper()))
+  return({
+    use expr, #(#(op, span), right) <- list.fold(rights, expr)
+    expr.Binary(expr, #(op, span), right)
+  })
+}
+
+fn parse_equality_helper() -> Parser(#(#(TokenType, Span), Expr)) {
+  todo
+  // use op <- do(
+  //   one_of([take_token(token.EqualEqual, ""), take_token(token.BangEqual, "")]),
+  // )
+  // use right <- do(parse_comparison())
+  // return(#(op, right))
+}
+
+fn parse_comparison() -> Parser(Expr) {
   todo
 }
 
-fn parse_expression() -> Parser(Expression) {
-  pratt.expression(
-    one_of: [fn(_) { parse_primary() }],
-    and_then: [],
-    dropping: nibble.throw(""),
-  )
-}
-
-fn parse_primary() -> Parser(Expression) {
+fn parse_primary() -> Parser(Expr) {
   one_of([parse_literal(), parse_grouping()])
 }
 
-fn parse_literal() -> Parser(Expression) {
-  use token: Token <- nibble.take_map("expected false")
-  case token.value {
-    token.True -> Some(ast.Literal(literal.Bool(True)))
-    token.False -> Some(ast.Literal(literal.Bool(False)))
-    token.Number(n) -> Some(ast.Literal(literal.Number(n)))
-    token.String(s) -> Some(ast.Literal(literal.String(s)))
+fn parse_literal() -> Parser(Expr) {
+  use token: TokenType <- nibble.take_map("expected primary")
+  case token {
+    token.True -> Some(expr.Literal(literal.Bool(True)))
+    token.False -> Some(expr.Literal(literal.Bool(False)))
+    token.Nil -> Some(expr.Literal(literal.Nil))
+    token.Number(n) -> Some(expr.Literal(literal.Number(n)))
+    token.String(s) -> Some(expr.Literal(literal.String(s)))
     _ -> None
   }
 }
 
-fn parse_grouping() -> Parser(Expression) {
-  use _ <- do(take_if("(", token.LeftParen))
-  use e <- do(parse_expression())
-  use _ <- do(take_if(")", token.RightParen))
-  return(e)
+fn parse_grouping() -> Parser(Expr) {
+  use _ <- do(nibble.token(token.LeftParen))
+  use expr <- do(parse_expression())
+  use _ <- do(expect_token(token.RightParen, "Expect ')' after expression."))
+  return(expr.Grouping(expr))
 }
 
-fn take_if(expecting: String, token_type: TokenType) {
-  nibble.take_if("expecting (" <> expecting <> ")", fn(token: Token) {
-    token.value == token_type
-  })
+fn expect_token(token_type: TokenType, message: String) -> Parser(Nil) {
+  use token <- nibble.take_map(message)
+  case token == token_type {
+    True -> Some(Nil)
+    False -> None
+  }
 }
