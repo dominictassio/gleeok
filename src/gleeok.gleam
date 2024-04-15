@@ -2,10 +2,8 @@ import argv
 import gleeok/ast/expr
 import gleeok/lexer
 import gleeok/parser
-import gleeok/token
 import gleam/erlang
 import gleam/io
-import gleam/list
 import nibble
 import simplifile
 
